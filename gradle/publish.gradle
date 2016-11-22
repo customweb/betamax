@@ -27,34 +27,42 @@ artifacts {
     archives sourceJar, javadocJar
 }
 
-signing {
-    required { !version.endsWith("SNAPSHOT") }
-    sign configurations.archives
-}
+//signing {
+//    required { !version.endsWith("SNAPSHOT") }
+//    sign configurations.archives
+//}
 
 uploadArchives {
     repositories {
         mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+//            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+//
+//            if (System.getenv()['SONATYPE_USERNAME'] != null && System.getenv()['SONATYPE_PASSWORD'] != null) {
+//                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+//                    authentication(userName: System.getenv()['SONATYPE_USERNAME'], password: System.getenv()['SONATYPE_PASSWORD'])
+//                }
+//
+//                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+//                    authentication(userName: System.getenv()['SONATYPE_USERNAME'], password: System.getenv()['SONATYPE_PASSWORD'])
+//                }
+//            } else if (project.hasProperty('ossrhUsername') && project.hasProperty('ossrhPassword')) {
+//                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+//                    authentication(userName: ossrhUsername, password: ossrhPassword)
+//                }
+//
+//                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+//                    authentication(userName: ossrhUsername, password: ossrhPassword)
+//                }
+//            } else {
+//                repository(url: "file://${System.properties['user.home']}/.m2/repository")
+//            }
 
-            if (System.getenv()['SONATYPE_USERNAME'] != null && System.getenv()['SONATYPE_PASSWORD'] != null) {
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: System.getenv()['SONATYPE_USERNAME'], password: System.getenv()['SONATYPE_PASSWORD'])
-                }
-
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                    authentication(userName: System.getenv()['SONATYPE_USERNAME'], password: System.getenv()['SONATYPE_PASSWORD'])
-                }
-            } else if (project.hasProperty('ossrhUsername') && project.hasProperty('ossrhPassword')) {
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                    authentication(userName: ossrhUsername, password: ossrhPassword)
-                }
-            } else {
-                repository(url: "file://${System.properties['user.home']}/.m2/repository")
+            def cwRepoProps = loadCwRepoPassword(project.rootProject)
+            def cwUrl = 'https://repo.customweb.com/artifactory/libs-release-local'
+            def cwUsername = cwRepoProps['user']
+            def cwPassword = cwRepoProps['password']
+            repository (url: cwUrl) {
+                authentication(userName: cwUsername, password: cwPassword)
             }
 
             pom.project {
@@ -64,7 +72,8 @@ uploadArchives {
                 description 'Betamax is a tool for mocking external HTTP resources such as web services and REST APIs in your tests.'
                 url 'http://betamax.software/'
 
-                groupId "software.betamax"
+//                groupId "software.betamax"
+                groupId "io.wallee.betamax"
 
                 scm {
                     connection 'scm:git:https://github.com/betamaxteam/betamax.git'
@@ -103,6 +112,23 @@ uploadArchives {
     }
 }
 
+private Properties loadCwRepoPassword(Project project) {
+    def f = project.file("${System.getProperty('user.home')}/.gradle/cw-repo-password.properties")
+    def p = f.toPath()
+    assert java.nio.file.Files.isReadable(p) : "Customweb repo password file does not exist or is not readable by the current user '${System.getProperty('user.name')}': '${p}'"
+    def perms = java.nio.file.attribute.PosixFilePermissions.toString(java.nio.file.Files.getPosixFilePermissions(p))
+    assert perms.endsWith('------') : "Customweb repo password file '${f}' is accessible by group and/or others (permissions '${perms}'); please make sure that the file is neither readable nor writable nor executable by anyone else than the current user '${System.getProperty('user.name')}'!"
+    def props = new Properties()
+    try {
+        f.withInputStream { props.load(it) }
+    } catch(Exception exc) {
+        throw new IOException("Failed to read Customweb repo password file '${p}': ${exc}", exc)
+    }
+    assert props['user'] != null && !props['user'].isEmpty() : "Missing or empty property 'user' in Customweb repo password file '${f}'."
+    assert props['password'] != null && !props['password'].isEmpty() : "Missing or empty property 'password' in Customweb repo password file '${f}'."
+    return props
+}
+
 def installer = install.repositories.mavenInstaller
 def deployer = uploadArchives.repositories.mavenDeployer
 
@@ -111,7 +137,8 @@ def deployer = uploadArchives.repositories.mavenDeployer
     pom.dependencies = pom.dependencies.findAll { dep -> dep.scope != 'test' }
 
     // TODO We should figure out why this is necessary
-    pom.dependencies.find { dep -> dep.groupId == 'betamax' }?.groupId = 'software.betamax'
+//    pom.dependencies.find { dep -> dep.groupId == 'betamax' }?.groupId = 'software.betamax'
+    pom.dependencies.find { dep -> dep.groupId == 'betamax' }?.groupId = 'io.wallee.betamax'
 
     pom.dependencies.find { dep -> dep.groupId == 'junit' && dep.artifactId == 'junit' }?.scope = 'provided'
     pom.dependencies.find { dep -> dep.groupId == 'org.specs2' && dep.artifactId == 'specs2-core_2.11' }?.scope = 'provided'

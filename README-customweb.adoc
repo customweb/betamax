@@ -1,0 +1,145 @@
+# Customweb Customizations for Betamax
+:sectnums:
+
+
+## Patching and Extending Betamax
+
+### IDEA
+
+Since Betamax is developed with IDEA by the upstream developers, you _must_ use the IDEA
+IDE to work on the Betamax project.
+
+Hints:
+
+* Import the cloned root directory as a Gradle project into IDEA. (Alternatively it should be
+  possible, to directly clone from the IDE, but I did not try that.)
+
+* You probably want to install the optional _Scala Plugin_ since some tests obviously rely on Scala.
+
+* Everything else, such as modules/subprojects, dependencies etc., should (hopefully)
+  be automatically configured correctly, once you imported the Betamax project as a
+  Gradle project.
+
+
+### Upstream Repository
+
+To add the *upstream repository*, issue the following command in the `betamax` directory:
+
+....
+git remote add upstream https://github.com/betamaxteam/betamax.git
+....
+
+So you will have two _remotes_, namely the customary `origin` which is the Customweb
+repository and the `upstream` remote which is the original source of the Betamax project.
+
+
+### The `master` Branch
+
+*Never merge other branches into the `master` branch!* The `master` branch should always
+be a copy of the original `master` branch from `upstream`, so "`clean`" feature branches
+(see below) can be created from the `master` branch.
+
+However, as usual, you should push to/pull from the `origin` to keep your local clone
+of the `master` branch in sync with the server. Additionally, you should regularly pull
+from the `upstream` to keep up to date with upstream changes:
+
+....
+git pull upstream master
+....
+
+If any changes have been pulled, you should push them to `origin` (i.e. simply `git push`).
+Also, active feature branches (see below) should merge the newest upstream changes
+from the local (resp. `origin`) `master` branch, whenever upstream changes have been pulled
+into the `master` branch.
+
+### Feature Branches
+
+To work on a feature (patch, extension), you create (as usual) a *feature branch*. Branch your feature branch
+from the `master` (which should reflect some state of the upstream `master`). *Never merge
+your feature branch back into master!* You may always merge _from_ the `master` but changes should
+only get into the master from _upstream_.
+
+This will keep your feature branch "`clean`" from Customweb modifications (except from the ones
+necessary for your feature) and will allow to propose later fine grained inclusion of single
+features into the upstream development by issuing a merge request for a specific Customweb
+feature branch to the upstream developers.
+
+
+### The `publish` Branch
+
+Last but not least, there is the `publish` branch. This branch is used to publish internal
+Customweb releases of the Betamax project with additional features. The `publish` branch
+contains modifications to the upstream build scripts, which allow us to publish our own
+(patched) Betamax releases into the internal Customweb artifact repository.
+See also _<<Publishing to the Customweb Artifact Repository>>_ below for more information.
+
+*Never merge from the publish branch* into
+any other branch. However, you may/should regularly merge the `master` branch _into_ the
+`publish` branch (specifically after upstream changes have been pulled), and you must merge
+all features from feature branches which should be published as part of internal Customweb
+Betamax releases.
+
+
+## Publishing to the Customweb Artifact Repository
+
+### Checklist for Publishing
+
+* Note that authentication against the Customweb Artifactory repository is done using
+  the `~/.gradle/cw-repo-password.properties` in your home directory like it is the
+  case for projects built with our Customweb Buildtools. (If you can release Buildtools-built
+  projects to our Artifactory, then you should also be able to release Customweb
+  Betamax releases. Otherwise you should fix that with the Buildtools first, before
+  attempting a Betamax release!)
+
+* Merge the features you want to be contained in the release directly from the feature
+  branches into the `publish` branch. (Do _not_ merge them into the `master` branch!)
+
+* You may also want to merge the `master` (possibly after pulling the latest upstream changes)
+  to be up to date with the upstream development.
+
+* Set the *version number* of the release. (It is recommended to always upgrade the version
+  number directly _before_ publishing a release -- as opposed to upgrading it always _after_
+  publishing a release.)
++
+Upstream will set the version number to `X.Y.Z-SNAPSHOT` where `X`, `Y` and `Z` are
+  (integer) version number components, for example: `2.1.0-SNAPSHOT`. By convention we
+  therefore use release version numbers with four components of the form `X.Y.Z.U` where
+  `X.Y.Z` is the original upstream version number of the version on which our release
+  is based and `U` should be counted from 0 upwards for subsequent Customweb releases
+  based on that upstream version.
++
+So for `2.1.0-SNAPSHOT` in upstream, you would start
+  with `2.1.0.0` for the first Customweb release and continue with `2.1.0.1`, `2.1.0.2`
+  etc. for subsequent releases. If upstream upgrades the version to -- say -- `2.1.1`
+  and we merge this into the `publish` branch, then we would reset the `U` counter
+  and give the first release after that change the version number `2.1.1.0` (folowed by
+  `2.1.1.1` and so on). See also _<<Possible Upstream Merge Conflicts>>_ below.
+
+* Push everything to `origin` before building the release (i.e. simply `git push`).
+
+* Build and publish the release: *TODO!*
+
+
+### Possible Upstream Merge Conflicts
+
+On the `publish` branch (and only there!), there is this additional
+`README-customweb.adoc` file (which should not normally lead to any conflicts) as
+well as modifications (compared to `upstream`) of the files `/betamax.gracle`
+and `/gradle/publish.gradle`.
+These two modified files might lead to conflicts if the `master` branch and/or feature branches
+are merged into the `publish` branch.
+
+* `/betamax.gradle`: Sets the version number (on line 4 in the file) which will be used for the next release. As said
+  in the checklist above, you should always modify this to the correct version number for the release
+  before releasing. If upstream upgrades this version number (say from `2.1.0-SNAPSHOT` to `2.1.1-SNAPSHOT`),
+  you will get a conflict on this line which is easily resolved by setting the version to the correct
+  version of the upcoming release (like `2.1.1.0` for our example -- see
+  _<<Checklist for Publishing>>_ above for the version number conventions.).
+
+* `publish.gradle`: Here are the actual modifications to be found. The original code can
+  still be found in the file (commented out) and some content of the `uploadArchives {` ... `}`
+  block has been replaced by an implementation which configures deployment with the Customweb
+  Artifactory server as the target. If upstream ever modifies this file (which will probably be
+  a rare occasion), you will have to manually merge the upstream changes with our local modifications.
+  User your know-how and rational judgement to reproduce the deployment into the Customweb
+  Artifactory server incorporating any relevant upstream changes!
