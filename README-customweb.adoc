@@ -117,7 +117,12 @@ So for `2.1.0-SNAPSHOT` in upstream, you would start
 
 * Push everything to `origin` before building the release (i.e. simply `git push`).
 
-* Build and publish the release: *TODO!*
+* Lat but not least, to build and publish the release, execute the Gradle `uploadArchives` task in the
+`betamax` root directory (combination with `clean` is generally recommended):
++
+....
+./gradlew clean uploadArchives
+....
 
 
 ### Possible Upstream Merge Conflicts
